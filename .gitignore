@@ -1,0 +1,11 @@
+antigo/
+
+*pdf
+lex.yy.c
+lex.yy.o
+parser
+resultado.c
+temp.c
+y.tab.h
+y.tab.c
+y.tab.o
