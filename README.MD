@@ -62,5 +62,6 @@ Exemplo:
 ```
 
 ## Autores
-Daniel Guimaraes
-Marcos Vinícius de Almeida
+
+* Daniel Guimaraes
+* Marcos Vinícius de Almeida
