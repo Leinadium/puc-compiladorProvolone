@@ -1,7 +1,16 @@
-ENTRADA X Y
+ENTRADA X Y 
 SAIDA Z
-Z=Y
-ENQUANTO X FACA 
-  INC(Z)
+  SE X 
+    INC(Z)
+  SENAO
+    SE Y
+      INC(Z)
+      INC(Z)
+    SENAO
+      INC(Z)
+      INC(Z)
+      INC(Z)
+    FIM
+  FIM
 FIM
-FIM
+    

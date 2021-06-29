@@ -13,7 +13,11 @@ INC         return (INC);
 ZERA        return (ZERA);
 ENQUANTO    return (ENQUANTO);
 FIM         return (FIM);
+VEZES       return (VEZES);
+SE          return (SE);
+SENAO       return (SENAO);
 "("         return (ABREPAR);
 ")"         return (FECHAPAR);
 "="         return (IGUAL);
-[a-zA-Z][a-zA-Z0-9]*  {yylval.sval = yytext; return (ID);}
+[a-zA-Z]    {yylval.sval =strdup(yytext); return (ID);}
+[ /t]       {}

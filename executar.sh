@@ -7,5 +7,5 @@ rm y.tab.o
 echo "Compilando"
 yacc -d grammar.y
 lex lexic.l
-gcc -c lex.yy.c y.tab.c -lm
-gcc -o parser lex.yy.o y.tab.o -ll -lm
+gcc -c lex.yy.c y.tab.c
+gcc -o parser lex.yy.o y.tab.o -ll
