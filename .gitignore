@@ -1,5 +1,5 @@
 antigo/
-
+*.out
 *pdf
 lex.yy.c
 lex.yy.o
