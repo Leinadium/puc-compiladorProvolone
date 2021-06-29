@@ -22,9 +22,12 @@
     #define COMANDO_REPETICAO 6
     #define COMANDO_SE 7
     #define COMANDO_SENAO 8
-
     #define COMANDO_END 100
     #define comando_t short
+
+    #define LINGUAGEM_C 1
+    #define LINGUAGEM_PY 2
+    #define LINGUAGEM_JAVA 3 
     
     #include <stdio.h>
     #include <stdlib.h>
@@ -89,24 +92,192 @@
     };
 
     FILE *fileC;
+    int tipoArquivo;
 
     void iniciarArquivo() {
-        fileC = fopen("resultado.c", "w+");
+        if (tipoArquivo == LINGUAGEM_C) {
+            fileC = fopen("resultado.c", "w+");
+        } else if (tipoArquivo == LINGUAGEM_PY) {
+            fileC = fopen("resultado.py", "w+");
+        } else if (tipoArquivo == LINGUAGEM_JAVA) {
+            fileC = fopen("resultado.java", "w+");
+        }
+
         if (fileC == NULL) {
             printf("Erro na criacao do arquivo temporario .c!\n");
             exit(-1);
         }
-        fprintf(fileC, "#include <stdio.h>\nvoid main() {\n");
     }
 
     void fecharArquivo() {
-        // fprintf(fileC, "printf(\"Saida: %s\\n\", saida);\nreturn;\n}\n", "%d");
         fclose(fileC);
         return;
     }
 
+    char *criaIdent(int q) {
+        char *tabs = (char *) malloc (sizeof(char) * (q+1));
+        for (int i = 0 ; i <= q ; i++) {
+            tabs[i] = '\t';
+        }
+        tabs[q] = '\0';
+        return tabs;
+    }
+
+    void criaCodigoJava(Elemento *e) {
+        iniciarArquivo();
+        fprintf(fileC, "import java.util.Scanner;\n\n");
+        fprintf(fileC, "public class Resultado {\npublic static void main(int argc, String[] argv) {\n");
+        while (e != NULL) {
+            switch (e->linha.comando) {
+                case COMANDO_ATRIBUICAO: {
+                    fprintf(fileC, "%s = %s;\n", e->linha.var1, e->linha.var2);
+                    break;
+                }
+                case COMANDO_ZERA: {
+                    fprintf(fileC, "%s = 0;\n", e->linha.var1);
+                    break;
+                }
+                case COMANDO_INCREMENTA: {
+                    fprintf(fileC, "%s++;\n", e->linha.var1);
+                    break;
+                }
+                case COMANDO_ENQUANTO: {
+                    fprintf(fileC, "while (%s > 0) {\n", e->linha.var1);
+                    break;
+                }
+                case COMANDO_END: {
+                    fprintf(fileC, "}\n"); 
+                    break;
+                }
+                case COMANDO_FINAL: {
+                    // var1 eh a lista de variaveis
+                    // splitando a lista de strings
+                    
+                    char *variavel = strtok(e->linha.var1, " ");  // faz um split na lista de variaveis
+                    while (variavel != NULL) {
+                        fprintf(fileC, "System.out.printf(\"Saida: [%s] = %s\\n\", %s);\n", variavel, "%d", variavel);  // imprime a saida
+                        variavel = strtok(NULL, " ");   // proxima string da lista de variaveis
+                    }
+                    fprintf(fileC, "}\n}\n"); // coloca as ultimas linhas
+                    break;
+                }
+                case COMANDO_ENTRADA: {
+                    // var1 eh a lista de variaveis a serem iniciadas
+                    // splitando a lista de strings
+                    fprintf(fileC, "Scanner _sc = new Scanner(System.in);\n");
+                    
+                    char *variavel = strtok(e->linha.var1, " ");
+                    
+                    while (variavel != NULL) {
+                        // para cada variavel, sera inicializada e scaneada
+                        fprintf(fileC, "System.out.printf(\"Entrada [%s]:\");\n", variavel);   // coloca um print
+                        fprintf(fileC, "int %s = _sc.next();\n", variavel);      // coloca um scan
+                        variavel = strtok(NULL, " ");   // proxima string da lista de variaveis
+                    }
+
+                    // var2 eh a lista de variaveis finais, que devem ser inicializadas
+                    variavel = strtok(e->linha.var2, " ");
+                    while (variavel != NULL) {
+                        // para cada variavel, ela deve ser inicializada
+                        fprintf(fileC, "int %s = 0;\n", variavel);      // inicia a variavel
+                        variavel = strtok(NULL, " ");               // proxima string da lista de variaveis
+                    }
+                    break;
+                }
+                case COMANDO_REPETICAO: {
+                    fprintf(fileC, "for (int _i = 0; _i<%s; _i++) {\n", e->linha.var1);
+                    break;
+                }
+
+                case COMANDO_SE: {
+                    fprintf(fileC, "if (%s){ ", e->linha.var1);
+                    break;
+                }
+
+                case COMANDO_SENAO: {
+                    fprintf(fileC, "} else {\n");
+                    break;
+                }
+            }
+            e = e->next;
+        }
+        fecharArquivo();
+    }
+
+    void criaCodigoPython(Elemento *e) {
+        iniciarArquivo();
+        int tabs = 0;
+        while (e != NULL) {
+            switch (e->linha.comando) {
+                case COMANDO_ATRIBUICAO: {
+                    fprintf(fileC, "%s%s=%s\n", criaIdent(tabs), e->linha.var1, e->linha.var2);
+                    break;
+                }
+                case COMANDO_ZERA: {
+                    fprintf(fileC, "%s%s = 0\n", criaIdent(tabs), e->linha.var1);
+                    break;
+                }
+                case COMANDO_INCREMENTA: {
+                    fprintf(fileC, "%s%s += 1\n", criaIdent(tabs), e->linha.var1);
+                    break;
+                }
+                case COMANDO_ENQUANTO: {
+                    fprintf(fileC, "%swhile %s > 0:\n", criaIdent(tabs), e->linha.var1);
+                    tabs += 1;
+                    break;
+                }
+                case COMANDO_END: { 
+                    tabs -= 1; 
+                    break;
+                }
+                case COMANDO_FINAL: {
+                    char *variavel = strtok(e->linha.var1, " ");  // faz um split na lista de variaveis
+                    while (variavel != NULL) {
+                        fprintf(fileC, "%sprint(\"Saida: [%s] = %s\\n\" %% %s)\n", criaIdent(tabs), variavel, "%d", variavel);  // imprime a saida
+                        variavel = strtok(NULL, " ");   // proxima string da lista de variaveis
+                    }
+                    break;
+                }
+                case COMANDO_ENTRADA: {
+                    char *variavel = strtok(e->linha.var1, " ");
+                    while (variavel != NULL) {
+                        // para cada variavel, sera inicializada e scaneada
+                        fprintf(fileC, "%s%s = int(input(\"Entrada [%s]:\"))\n", criaIdent(tabs), variavel, variavel);   // coloca um print      
+                        variavel = strtok(NULL, " ");   // proxima string da lista de variaveis
+                    }
+
+                    // var2 eh a lista de variaveis finais, que devem ser inicializadas
+                    variavel = strtok(e->linha.var2, " ");
+                    while (variavel != NULL) {
+                        // para cada variavel, ela deve ser inicializada
+                        fprintf(fileC, "%s%s = 0\n", criaIdent(tabs), variavel);      // inicia a variavel
+                        variavel = strtok(NULL, " ");               // proxima string da lista de variaveis
+                    }
+                    break;
+                }
+                case COMANDO_REPETICAO: {
+                    fprintf(fileC, "%sfor _ in range(len(%s)):\n", criaIdent(tabs), e->linha.var1);
+                    tabs += 1;
+                    break;
+                }
+                case COMANDO_SE: {
+                    fprintf(fileC, "%sif %s > 0:\n", criaIdent(tabs), e->linha.var1);
+                    tabs += 1;
+                    break;
+                }
+                case COMANDO_SENAO: {
+                    fprintf(fileC, "%selse:\n", criaIdent(tabs-1));
+                    break;
+                }
+            }
+            e = e->next;
+        }
+        fecharArquivo();
+    }
+
     void criaCodigoC(Elemento *e) {
         iniciarArquivo();
+        fprintf(fileC, "#include <stdio.h>\nvoid main() {\n");
         while (e != NULL) {
             switch (e->linha.comando) {
                 case COMANDO_ATRIBUICAO: {
@@ -231,7 +402,13 @@ program : ENTRADA varlist SAIDA varlist cmds FIM {
     insereElementoFinal(ee, e);
     
     // exibeLinhas(e);
-    criaCodigoC(e);
+    if (tipoArquivo == LINGUAGEM_C) {
+        criaCodigoC(e);
+    } else if (tipoArquivo == LINGUAGEM_PY) {
+        criaCodigoPython(e);
+    } else if (tipoArquivo == LINGUAGEM_JAVA) {
+        criaCodigoJava(e);
+    }
 }
     ;
 
@@ -357,8 +534,8 @@ cmd : ENQUANTO ID FACA cmds FIM {
 
 
 int main(int argc, char **argv) {
-    if (argc != 2) {
-        printf("Uso correto: %s arquivo.provolone", argv[0]);
+    if (argc != 2 && argc != 3) {
+        printf("Uso correto: %s arquivo.provolone [c/py/java]", argv[0]);
         exit(-1);
     }
     printf("Criando arquivo temporario\n");
@@ -366,6 +543,16 @@ int main(int argc, char **argv) {
     if (arquivoInput == NULL) {
         printf("Erro abrindo arquivo de leitura!\n");
         exit(-3);
+    }
+    if (argc == 3 && strcmp(argv[2], "py") == 0) {
+        tipoArquivo = LINGUAGEM_PY;
+        printf("Linguagem usada: PYTHON\n");
+    } else if (argc == 3 && strcmp(argv[2], "java") == 0) {
+        tipoArquivo = LINGUAGEM_JAVA;
+        printf("Linguagem usada: JAVA\n");
+    } else { 
+        printf("Linguagem usada: C\n");
+        tipoArquivo = LINGUAGEM_C; 
     }
     
     iniciarArquivo();
