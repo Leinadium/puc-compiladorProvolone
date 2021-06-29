@@ -1,5 +1,9 @@
 %{
     /*
+
+    Daniel Schreiber Guimaraes     -> 1910462
+    Marcos Vinicius Araujo Almeida -> 1910869
+
     Gramatica de Provol-One:
 
     program -> ENTRADA varlist SAIDA varlist cmds FIM
@@ -11,6 +15,22 @@
              | id = id
              | INC(id)
              | ZERA(id)
+             | FACA ID VEZES cmds FIM
+             | SE ID cmds FIM
+             | SE ID cmds SENAO cmds FIM 
+
+    O parser ao detectar uma regra, irá adicionar mais um nó em uma lista encadeada,
+    uma lista de Elementos, em que cada elemento possui uma Linha. 
+
+    Essa linha é uma estrutura com as seguintes variáveis:
+        char *var1 -> nome da primeira variavei da instrucao
+        char *var2 -> nome da segunda variavel da instrucao, caso precise
+        comando_t comando -> nome do comando
+
+    Após gerar a lista encadeada, o código final é gerado por alguma das funções
+    chamadas de "gerarCodidoXXXX", em que "XXXX" é a linguagem escolhida.
+    Como a leitura agora é linear, não há problemas como a identação do python (que
+    é complicado de fazer com um parser ascendente)
     */
 
     #define COMANDO_ENTRADA 0
@@ -27,7 +47,8 @@
 
     #define LINGUAGEM_C 1
     #define LINGUAGEM_PY 2
-    #define LINGUAGEM_JAVA 3 
+    #define LINGUAGEM_JAVA 3
+    #define LINGUAGEM_LUA 4
     
     #include <stdio.h>
     #include <stdlib.h>
@@ -48,7 +69,10 @@
         Linha linha;
     };
 
-
+    /*
+        Insere o elemento 'e' no final da lista cujo primeiro
+        elemento é o 'lista'.
+    */
     void insereElementoFinal(Elemento *e, Elemento *lista) {
         // andando ate o final
         Elemento *ultimo = lista;
@@ -60,7 +84,11 @@
         return;
     }
 
-    Elemento *insereElementoInicio(Elemento *e, Elemento *lista) {
+    /*
+        Insere o elemento 'e' (e todos os elementos seguintes dele) 
+        no inicio da lista cujo primeiro elemento é o 'lista'
+    */
+    void insereElementoInicio(Elemento *e, Elemento *lista) {
         //andando ate o final do e
         Elemento *ultimo = e;
 
@@ -71,29 +99,30 @@
         lista->prev = e;
     }
 
+    /*
+        Exibe cada linha da lista encadeada, para testes
+    */
     void exibeLinhas(Elemento *e) {
         while (e != NULL) {
             printf("%d [[%s]] [[%s]]\n", e->linha.comando, e->linha.var1, e->linha.var2);
             e = e->next;
         }
     }
-    //void iniciarCodigo() {
-    //    codigo = (Linha *) malloc (sizeof(Linha));
-    //}
-
 
     extern int yylex();
-    extern FILE *yyin;
-    extern int yyparse();
+    extern FILE *yyin;      // arquivo de entrada 
+    extern int yyparse();   
+    FILE *fileC;
+    int tipoArquivo;
 
     void yyerror(const char *s) {
         fprintf(stderr, "%s\n", s);
         exit(errno);
     };
 
-    FILE *fileC;
-    int tipoArquivo;
-
+    /*
+        Abre o arquivo e salva o FILE na variavel "fileC" global
+    */
     void iniciarArquivo() {
         if (tipoArquivo == LINGUAGEM_C) {
             fileC = fopen("resultado.c", "w+");
@@ -101,6 +130,8 @@
             fileC = fopen("resultado.py", "w+");
         } else if (tipoArquivo == LINGUAGEM_JAVA) {
             fileC = fopen("resultado.java", "w+");
+        } else if (tipoArquivo == LINGUAGEM_LUA) {
+            fileC = fopen("resultado.lua", "w+");
         }
 
         if (fileC == NULL) {
@@ -109,11 +140,20 @@
         }
     }
 
+    /*
+        Fecha o arquivo na variavel global "fileC"
+    */
     void fecharArquivo() {
         fclose(fileC);
         return;
     }
 
+    /*
+        Recebe uma quantidade de tabs, e retorna uma string contendo
+        os tabs (exemplo para q=3: "\t\t\t\0")
+        Usando para o Python, mas pode ser usado nos outros códigos para
+        melhorar o código gerado
+    */
     char *criaIdent(int q) {
         char *tabs = (char *) malloc (sizeof(char) * (q+1));
         for (int i = 0 ; i <= q ; i++) {
@@ -121,6 +161,92 @@
         }
         tabs[q] = '\0';
         return tabs;
+    }
+
+    /*
+        A seguir estao as funcoes que geram o código a partir do primeiro elemento
+        da lista encadeada.
+        criaCodigoLua
+        criaCodigoJava
+        criaCodigoPython
+        criaCodigoC
+    */
+
+    void criaCodigoLua(Elemento *e) {
+        iniciarArquivo();
+        while (e != NULL) {
+            switch (e->linha.comando) {
+                case COMANDO_ATRIBUICAO: {
+                    fprintf(fileC, "%s = %s\n", e->linha.var1, e->linha.var2);
+                    break;
+                }
+                case COMANDO_ZERA: {
+                    fprintf(fileC, "%s = 0\n", e->linha.var1);
+                    break;
+                }
+                case COMANDO_INCREMENTA: {
+                    fprintf(fileC, "%s = %s + 1\n", e->linha.var1, e->linha.var1);
+                    break;
+                }
+                case COMANDO_ENQUANTO: {
+                    fprintf(fileC, "while %s > 0 do \n", e->linha.var1);
+                    break;
+                }
+                case COMANDO_END: {
+                    fprintf(fileC, "end\n"); 
+                    break;
+                }
+                case COMANDO_FINAL: {
+                    // var1 eh a lista de variaveis
+                    // splitando a lista de strings
+                    
+                    char *variavel = strtok(e->linha.var1, " ");  // faz um split na lista de variaveis
+                    while (variavel != NULL) {
+                        fprintf(fileC, "io.write(\"Saida [%s]: \", %s, \"\\n\")", variavel, variavel);  // imprime a saida
+                        variavel = strtok(NULL, " ");   // proxima string da lista de variaveis
+                    }
+                    break;
+                }
+                case COMANDO_ENTRADA: {
+                    // var1 eh a lista de variaveis a serem iniciadas
+                    // splitando a lista de strings
+                    char *variavel = strtok(e->linha.var1, " ");
+                    while (variavel != NULL) {
+                        // para cada variavel, sera inicializada e scaneada
+                        fprintf(fileC, "local %s\n", variavel);                      // inicia a variavel
+                        fprintf(fileC, "io.write(\"Entrada [%s]:\")\n", variavel);   // coloca um print
+                        fprintf(fileC, "%s = io.read(\"*number\")\n", variavel);      // coloca um scan
+                        
+                        variavel = strtok(NULL, " ");   // proxima string da lista de variaveis
+                    }
+
+                    // var2 eh a lista de variaveis finais, que devem ser inicializadas
+                    variavel = strtok(e->linha.var2, " ");
+                    while (variavel != NULL) {
+                        // para cada variavel, ela deve ser inicializada
+                        fprintf(fileC, "local %s = 0\n", variavel);      // inicia a variavel
+                        variavel = strtok(NULL, " ");               // proxima string da lista de variaveis
+                    }
+                    break;
+                }
+                case COMANDO_REPETICAO: {
+                    fprintf(fileC, "for _i=0,%s do\n", e->linha.var1);
+                    break;
+                }
+
+                case COMANDO_SE: {
+                    fprintf(fileC, "if %s then\n", e->linha.var1);
+                    break;
+                }
+
+                case COMANDO_SENAO: {
+                    fprintf(fileC, "else\n");
+                    break;
+                }
+            }
+            e = e->next;
+        }
+        fecharArquivo();
     }
 
     void criaCodigoJava(Elemento *e) {
@@ -408,6 +534,8 @@ program : ENTRADA varlist SAIDA varlist cmds FIM {
         criaCodigoPython(e);
     } else if (tipoArquivo == LINGUAGEM_JAVA) {
         criaCodigoJava(e);
+    } else if (tipoArquivo == LINGUAGEM_LUA) {
+        criaCodigoLua(e);
     }
 }
     ;
@@ -534,11 +662,11 @@ cmd : ENQUANTO ID FACA cmds FIM {
 
 
 int main(int argc, char **argv) {
+    /* faz a leitura dos argumentos */
     if (argc != 2 && argc != 3) {
-        printf("Uso correto: %s arquivo.provolone [c/py/java]", argv[0]);
+        printf("Uso correto: %s arquivo.provolone [c/py/java/lua]", argv[0]);
         exit(-1);
     }
-    printf("Criando arquivo temporario\n");
     FILE *arquivoInput = fopen(argv[1], "r");
     if (arquivoInput == NULL) {
         printf("Erro abrindo arquivo de leitura!\n");
@@ -550,11 +678,16 @@ int main(int argc, char **argv) {
     } else if (argc == 3 && strcmp(argv[2], "java") == 0) {
         tipoArquivo = LINGUAGEM_JAVA;
         printf("Linguagem usada: JAVA\n");
+    
+    } else if (argc == 3 && strcmp(argv[2], "lua") == 0) {
+        tipoArquivo = LINGUAGEM_LUA;
+        printf("Linguagem usada: LUA\n");
     } else { 
         printf("Linguagem usada: C\n");
         tipoArquivo = LINGUAGEM_C; 
     }
     
+    /* abre o arquivo final para salvar o código */
     iniciarArquivo();
 
     printf("Executando parser\n");
@@ -562,6 +695,5 @@ int main(int argc, char **argv) {
     yyparse();
 
     printf("Finalizando parser\n");
-    fclose(arquivoInput);
     return 0;
 }

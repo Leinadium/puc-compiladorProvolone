@@ -1,5 +1,9 @@
 %option yywrap
     /*
+
+        Daniel Schreiber Guimaraes     -> 1910462
+        Marcos Vinicius Araujo Almeida -> 1910869
+
         Compilador de Provol-One
     */ 
     #include <stdio.h>
@@ -19,5 +23,6 @@ SENAO       return (SENAO);
 "("         return (ABREPAR);
 ")"         return (FECHAPAR);
 "="         return (IGUAL);
+#.*         {/* comentario */}
 [a-zA-Z]    {yylval.sval =strdup(yytext); return (ID);}
 [ /t]       {}

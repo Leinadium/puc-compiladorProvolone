@@ -8,4 +8,4 @@ echo "Compilando"
 yacc -d grammar.y
 lex lexic.l
 gcc -c lex.yy.c y.tab.c
-gcc -o parser lex.yy.o y.tab.o -ll
+gcc -o compilador lex.yy.o y.tab.o -ll

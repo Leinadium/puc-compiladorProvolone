@@ -1,10 +1,11 @@
 antigo/
 *.out
-*pdf
+*.pdf
+
 lex.yy.c
 lex.yy.o
 parser
-resultado.c
+resultado.*
 temp.c
 y.tab.h
 y.tab.c
