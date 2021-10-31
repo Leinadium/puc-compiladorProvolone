@@ -64,4 +64,4 @@ Exemplo:
 ## Autores
 
 * Daniel Guimaraes
-* Marcos Vinícius de Almeida
+* Marcos Vinicius Araujo Almeida
